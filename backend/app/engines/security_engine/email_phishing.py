@@ -13,6 +13,32 @@ SUSPICIOUS_TERMS = {
     "security alert",
 }
 
+def parse_email_content(raw_email_text: str):
+    # যদি টেক্সট খালি থাকে বা শুধু HTML ট্যাগ থাকে
+    if not raw_email_text:
+        return "", [], "Safe"
+
+    # BeautifulSoup দিয়ে হ্যান্ডেল করার চেষ্টা করা, না থাকলে ফলব্যাক হিসেবে Regex ব্যবহার করা
+    try:
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(raw_email_text, "html.parser")
+        
+        # সব দৃশ্যমান টেক্সট সংগ্রহ করা
+        text_content = soup.get_text(separator=" ")
+        
+        # সব হাইপারলিংক (href) সংগ্রহ করা
+        links = [a.get('href') for a in soup.find_all('a', href=True)]
+    except ImportError:
+        # BeautifulSoup না থাকলে সাধারণ পাইথন লজিক
+        text_content = re.sub('<[^<]+?>', '', raw_email_text)
+        links = re.findall(r'href=[\"\']?([^\"\'>]+)', raw_email_text)
+
+    # যদি বডি খালি পাওয়া যায় কিন্তু HTML কন্টেন্ট থাকে, তবে ফলস নেগেটিভ "Safe" না দেখিয়ে ওয়ার্নিং বা রিভিউ স্ট্যাটাস নির্ধারণ করা
+    verdict = "Suspicious" if len(links) > 0 else "Needs Review" if not text_content.strip() else "Safe"
+
+    return text_content, links, verdict
+
+
 def analyze_email(raw_email: bytes) -> dict:
     message = BytesParser(policy=policy.default).parsebytes(raw_email)
 
@@ -23,14 +49,33 @@ def analyze_email(raw_email: bytes) -> dict:
 
     if message.is_multipart():
         for part in message.walk():
-            if part.get_content_type() == "text/plain":
-                body_parts.append(part.get_content())
+            content_type = part.get_content_type()
+            # text/plain অথবা text/html দুটোই পার্স করার জন্য হ্যান্ডেল করা
+            if content_type in ["text/plain", "text/html"]:
+                try:
+                    payload = part.get_content()
+                    if payload:
+                        body_parts.append(payload)
+                except Exception:
+                    pass
     else:
-        body_parts.append(message.get_content())
+        try:
+            payload = message.get_content()
+            if payload:
+                body_parts.append(payload)
+        except Exception:
+            pass
 
-    body = "\n".join(body_parts)
+    raw_body_text = "\n".join(body_parts)
 
-    links = re.findall(r"https?://[^\s<>\"]+", body)
+    # HTML বা প্লেন টেক্সট থেকে বডি এবং লিংকগুলো সেফলি এক্সট্রাক্ট করা
+    body, html_links, html_verdict = parse_email_content(raw_body_text)
+
+    # রেগুলার এক্সপ্রেশন দিয়েও টেক্সটের ভেতর থেকে র বা সরাসরি লিংকগুলো খুঁজে বের করা
+    regex_links = re.findall(r"https?://[^\s<>\"]+", raw_body_text)
+    
+    # সব লিংক একসাথে করে ডুপ্লিকেট রিমুভ করা
+    links = list(set(html_links + regex_links))
 
     suspicious_terms = [
         term for term in SUSPICIOUS_TERMS
@@ -62,6 +107,10 @@ def analyze_email(raw_email: bytes) -> dict:
         + len(suspicious_links) * 20
         + (15 if not sender else 0),
     )
+
+    # যদি HTML পার্সার থেকে কোনো স্পেশাল স্ট্যাটাস আসে সেটিও কনসিডার করা
+    if html_verdict == "Needs Review" and score < 35:
+        score = max(score, 35)
 
     if score >= 70:
         classification = "Malicious"

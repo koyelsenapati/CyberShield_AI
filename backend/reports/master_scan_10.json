@@ -1,20 +1,22 @@
 {
     "status": "Completed",
     "metadata": {
-        "generated_at": "2026-09-21 20:36:04.132396+00:00",
+        "generated_at": "2026-10-05 13:07:17.716939+00:00",
         "generator": "CyberShield AI",
         "version": "1.0.0"
     },
     "scan_report": {
         "target": "127.0.0.1",
         "status": "Completed",
-        "risk_level": "Medium",
+        "risk_level": "Low",
         "risk_breakdown": {
-            "web": "Low",
-            "network": "Medium",
-            "vulnerability": "Medium",
-            "phishing": "Low"
+            "web": "Unknown",
+            "network": "Low",
+            "vulnerability": "Low",
+            "phishing": "Unknown"
         },
+        "risk_score": 1,
+        "phishing_confidence": null,
         "web_scan": null,
         "network_scan": {
             "scanner": "network",
@@ -41,22 +43,14 @@
                             "service": "microsoft-ds",
                             "product": "",
                             "version": ""
-                        },
-                        {
-                            "port": 8000,
-                            "protocol": "tcp",
-                            "state": "open",
-                            "service": "http",
-                            "product": "Uvicorn",
-                            "version": ""
                         }
                     ]
                 }
             ],
             "devices_found": 1,
-            "open_ports": 3,
-            "scan_duration": 7.15,
-            "risk_level": "Medium",
+            "open_ports": 2,
+            "scan_duration": 7.03,
+            "risk_level": "Low",
             "risk_score": 0,
             "error": null
         },
@@ -91,79 +85,60 @@
                                 "service": "microsoft-ds",
                                 "product": "",
                                 "version": ""
-                            },
-                            {
-                                "port": 8000,
-                                "protocol": "tcp",
-                                "state": "open",
-                                "service": "http",
-                                "product": "Uvicorn",
-                                "version": ""
                             }
                         ]
                     }
                 ],
                 "devices_found": 1,
-                "open_ports": 3,
-                "scan_duration": 7.15,
-                "risk_level": "Medium",
+                "open_ports": 2,
+                "scan_duration": 7.03,
+                "risk_level": "Low",
                 "risk_score": 0,
                 "error": null
             },
-            "overall_risk": "Medium",
-            "findings_count": 3,
+            "overall_risk": "Low",
+            "findings_count": 2,
             "findings": [
                 {
                     "id": "network-127.0.0.1-135",
                     "name": "Open Port 135",
-                    "severity": "MEDIUM",
+                    "severity": "LOW",
                     "cve_id": null,
                     "cvss": null,
                     "description": "Open msrpc service detected on 127.0.0.1:135.",
                     "solution": "Close unnecessary exposed services and restrict access using firewall rules or network segmentation.",
                     "affected_component": "127.0.0.1:135",
-                    "discovered_at": "2026-09-21T20:36:04.119578+00:00"
+                    "discovered_at": "2026-10-05T13:07:17.703651+00:00"
                 },
                 {
                     "id": "network-127.0.0.1-445",
                     "name": "Open Port 445",
-                    "severity": "MEDIUM",
+                    "severity": "LOW",
                     "cve_id": null,
                     "cvss": null,
                     "description": "Open microsoft-ds service detected on 127.0.0.1:445.",
                     "solution": "Close unnecessary exposed services and restrict access using firewall rules or network segmentation.",
                     "affected_component": "127.0.0.1:445",
-                    "discovered_at": "2026-09-21T20:36:04.119624+00:00"
-                },
-                {
-                    "id": "network-127.0.0.1-8000",
-                    "name": "Open Port 8000",
-                    "severity": "MEDIUM",
-                    "cve_id": null,
-                    "cvss": null,
-                    "description": "Open http service detected on 127.0.0.1:8000.",
-                    "solution": "Close unnecessary exposed services and restrict access using firewall rules or network segmentation.",
-                    "affected_component": "127.0.0.1:8000",
-                    "discovered_at": "2026-09-21T20:36:04.119645+00:00"
+                    "discovered_at": "2026-10-05T13:07:17.703702+00:00"
                 }
             ],
             "error": null
         },
         "phishing": null,
         "scan_id": 10,
-        "created_at": "2026-09-21 20:36:04"
+        "created_at": "2026-10-05 13:07:17"
     },
     "ai_report": {
         "status": "Completed",
-        "summary": "Scan completed successfully. Total findings: 1. Critical: 0, High: 0, Medium: 1, Low: 0.",
+        "summary": "Scan completed successfully. Total findings: 1. Critical: 0, High: 0, Medium: 0, Low: 1.",
         "analysis": {
             "total_findings": 1,
             "critical": [],
             "high": [],
-            "medium": [
+            "medium": [],
+            "low": [
                 "Network"
-            ],
-            "low": []
+            ]
         },
         "recommendations": [
             {
@@ -173,7 +148,7 @@
             }
         ],
         "remediation": [],
-        "llm_prompt": "You are a senior cybersecurity analyst.\nAnalyze the following security scan report.\nExplain the vulnerabilities.\nProvide remediation steps.\nPrioritize the findings.\n\n=== NETWORK SCAN ===\nscanner: network\nstatus: Completed\ntarget: 127.0.0.1\nhosts: [{'ip': '127.0.0.1', 'hostname': 'localhost', 'state': 'up', 'ports': [{'port': 135, 'protocol': 'tcp', 'state': 'open', 'service': 'msrpc', 'product': 'Microsoft Windows RPC', 'version': ''}, {'port': 445, 'protocol': 'tcp', 'state': 'open', 'service': 'microsoft-ds', 'product': '', 'version': ''}, {'port': 8000, 'protocol': 'tcp', 'state': 'open', 'service': 'http', 'product': 'Uvicorn', 'version': ''}]}]\ndevices_found: 1\nopen_ports: 3\nscan_duration: 7.15\nrisk_level: Medium\nrisk_score: 0\nerror: None\n\nReturn:\n1. Executive Summary\n2. Risk Analysis\n3. Recommended Fixes\n4. Priority Order\n5. Final Security Rating"
+        "llm_prompt": "You are a senior cybersecurity analyst.\nAnalyze the following security scan report.\nExplain the vulnerabilities.\nProvide remediation steps.\nPrioritize the findings.\n\n=== NETWORK SCAN ===\nscanner: network\nstatus: Completed\ntarget: 127.0.0.1\nhosts: [{'ip': '127.0.0.1', 'hostname': 'localhost', 'state': 'up', 'ports': [{'port': 135, 'protocol': 'tcp', 'state': 'open', 'service': 'msrpc', 'product': 'Microsoft Windows RPC', 'version': ''}, {'port': 445, 'protocol': 'tcp', 'state': 'open', 'service': 'microsoft-ds', 'product': '', 'version': ''}]}]\ndevices_found: 1\nopen_ports: 2\nscan_duration: 7.03\nrisk_level: Low\nrisk_score: 0\nerror: None\n\nReturn:\n1. Executive Summary\n2. Risk Analysis\n3. Recommended Fixes\n4. Priority Order\n5. Final Security Rating"
     },
     "cvss": [
         {

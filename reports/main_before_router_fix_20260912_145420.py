@@ -91,7 +91,6 @@ def root():
 def health():
     return {"status": "Healthy"}
 
-
 app.include_router(password_router)
 app.include_router(malware_hash_router)
 app.include_router(incidents_router)

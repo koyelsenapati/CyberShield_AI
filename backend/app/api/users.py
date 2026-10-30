@@ -1,7 +1,7 @@
-﻿from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user
+from app.api.dependencies import admin_required, get_current_user
 from app.database.database import get_db
 from app.schemas.user import UserResponse
 from app.services.user_service import (
@@ -21,8 +21,9 @@ router = APIRouter(
 )
 def users(
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    admin=Depends(admin_required),
 ):
+    """Admin only: list every user."""
     return get_all_users(db)
 
 @router.get(
@@ -34,29 +35,34 @@ def user(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    result = get_user(db, user_id)
+    """
+    Admins may view any user; everyone else may only view themselves.
 
-    if not result:
+    Other users' IDs return 404 (not 403) so the endpoint cannot be used to
+    enumerate which user IDs exist. The check happens before any lookup.
+    """
+    if current_user.role != "admin" and current_user.id != user_id:
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
 
-    return result
+    return get_user(db, user_id)
 
 @router.delete("/{user_id}")
 def remove_user(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    admin=Depends(admin_required),
 ):
-    result = delete_user(db, user_id)
-
-    if not result:
+    """Admin only: delete a user. Admins cannot delete themselves."""
+    if admin.id == user_id:
         raise HTTPException(
-            status_code=404,
-            detail="User not found",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Administrators cannot delete their own account.",
         )
+
+    delete_user(db, user_id)
 
     return {
         "message": "User deleted successfully",

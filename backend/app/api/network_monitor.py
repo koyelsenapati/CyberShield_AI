@@ -1,4 +1,4 @@
-﻿"""
+"""
 CyberShield AI
 Network Monitor API
 """
@@ -6,7 +6,9 @@ Network Monitor API
 import asyncio
 import json
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, status
+
+from app.api.dependencies import get_current_user
 
 from app.core.jwt import verify_access_token
 from app.services.network_monitor_service import get_network_snapshot
@@ -17,9 +19,12 @@ router = APIRouter(
 )
 
 @router.get("/network/statistics")
-def network_statistics():
+def network_statistics(current_user=Depends(get_current_user)):
     """
     Return the current real-time network monitoring snapshot.
+
+    Requires authentication: the snapshot describes the host's live
+    network activity.
     """
     return get_network_snapshot()
 

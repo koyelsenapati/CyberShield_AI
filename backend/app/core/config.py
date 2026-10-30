@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 from urllib.parse import quote_plus
 
 from pydantic import model_validator
@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+
+    # Root directory for the file-integrity feature. Each user may only hash
+    # files inside <FILE_INTEGRITY_BASE_DIR>/<their user id>/. Defaults to
+    # backend/file_integrity_data.
+    FILE_INTEGRITY_BASE_DIR: str | None = None
 
     VT_API_KEY: str | None = None
     VT_TIMEOUT_SECONDS: int = 15
@@ -58,6 +63,13 @@ class Settings(BaseSettings):
         return self
 
     @property
+    def file_integrity_base_dir(self) -> Path:
+        return Path(
+            self.FILE_INTEGRITY_BASE_DIR
+            or (BASE_DIR / "file_integrity_data")
+        )
+
+    @property
     def database_url(self) -> str:
         if self.DATABASE_URL:
             return self.DATABASE_URL
@@ -69,5 +81,11 @@ class Settings(BaseSettings):
             f"@{self.DB_HOST}:{self.DB_PORT}"
             f"/{self.DB_NAME}"
         )
+
+    # ব্যাকওয়ার্ড কম্প্যাটিবিলিটির জন্য প্রপার্টি যোগ করা হলো 
+    # যাতে কোডের অন্য কোথাও VIRUSTOTAL_API_KEY কল করলে তা VT_API_KEY রিটার্ন করে
+    @property
+    def VIRUSTOTAL_API_KEY(self) -> str | None:
+        return self.VT_API_KEY
 
 settings = Settings()

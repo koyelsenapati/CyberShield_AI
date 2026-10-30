@@ -2,37 +2,52 @@
 CyberShield AI
 Central Risk Orchestrator
 
-Responsible for:
-- Normalizing risk levels
-- Comparing scanner risks
-- Calculating Master Scan risk
-- Building risk breakdown
-- Providing a unified risk summary
+Responsibilities:
+- Normalize scanner risk levels
+- Compare scanner risks
+- Calculate master risk
+- Build risk breakdown
+- Preserve Unknown for unavailable assessments
 """
 
 from typing import Any
 
+
 RISK_ORDER = {
+    "Unknown": 0,
     "Low": 1,
     "Medium": 2,
     "High": 3,
     "Critical": 4,
 }
 
+
 VALID_RISKS = set(RISK_ORDER.keys())
+
 
 def normalize_risk(risk: Any) -> str:
     """
-    Normalize any risk value into a valid
-    CyberShield AI risk level.
+    Normalize a risk value.
+
+    None, empty, invalid, or unavailable values become Unknown.
+    Unknown must not be converted to Low.
     """
 
     if risk is None:
-        return "Low"
+        return "Unknown"
 
-    risk = str(risk).strip().lower()
+    normalized = str(risk).strip().lower()
+
+    if not normalized:
+        return "Unknown"
 
     risk_mapping = {
+        "unknown": "Unknown",
+        "not assessed": "Unknown",
+        "not_assessed": "Unknown",
+        "unavailable": "Unknown",
+        "failed": "Unknown",
+        "error": "Unknown",
         "low": "Low",
         "medium": "Medium",
         "moderate": "Medium",
@@ -41,25 +56,29 @@ def normalize_risk(risk: Any) -> str:
     }
 
     return risk_mapping.get(
-        risk,
-        "Low",
+        normalized,
+        "Unknown",
     )
+
 
 def get_highest_risk(
     *risks: str | None,
 ) -> str:
     """
-    Return the highest risk level
-    from multiple risk values.
+    Return the highest assessed risk.
+
+    Unknown values are ignored when at least one valid
+    assessed risk exists. If no valid assessment exists,
+    return Unknown.
     """
 
-    highest = "Low"
+    highest = "Unknown"
 
     for risk in risks:
+        normalized = normalize_risk(risk)
 
-        normalized = normalize_risk(
-            risk
-        )
+        if normalized == "Unknown":
+            continue
 
         if (
             RISK_ORDER[normalized]
@@ -69,6 +88,25 @@ def get_highest_risk(
 
     return highest
 
+
+def _get_vulnerability_risk(
+    vulnerability_result: dict | None,
+) -> str:
+    """
+    Extract the vulnerability scanner risk safely.
+    """
+
+    if not isinstance(vulnerability_result, dict):
+        return "Unknown"
+
+    risk = vulnerability_result.get("overall_risk")
+
+    if risk is None:
+        risk = vulnerability_result.get("risk_level")
+
+    return normalize_risk(risk)
+
+
 def calculate_master_risk(
     web_result: dict | None = None,
     network_result: dict | None = None,
@@ -76,95 +114,59 @@ def calculate_master_risk(
     vulnerability_result: dict | None = None,
 ) -> str:
     """
-    Calculate the overall Master Scan risk.
+    Calculate overall risk using the highest assessed risk.
 
-    The highest valid risk from all
-    security engines becomes the
-    overall risk.
+    Failed or missing components do not become Low risk.
     """
 
-    risks = []
+    risks: list[str] = []
 
-    # ---------------------------------------------------------
-    # WEB SCAN
-    # ---------------------------------------------------------
-
-    if web_result:
-
+    if isinstance(web_result, dict):
         risks.append(
-            web_result.get(
-                "risk_level"
+            normalize_risk(
+                web_result.get("risk_level")
             )
         )
 
-    # ---------------------------------------------------------
-    # NETWORK SCAN
-    # ---------------------------------------------------------
-
-    if network_result:
-
+    if isinstance(network_result, dict):
         risks.append(
-            network_result.get(
-                "risk_level"
+            normalize_risk(
+                network_result.get("risk_level")
             )
         )
 
-    # ---------------------------------------------------------
-    # VULNERABILITY SCAN
-    # ---------------------------------------------------------
-
-    if vulnerability_result:
-
+    if isinstance(vulnerability_result, dict):
         risks.append(
-            vulnerability_result.get(
-                "overall_risk",
-                vulnerability_result.get(
-                    "risk_level"
-                ),
+            _get_vulnerability_risk(
+                vulnerability_result
             )
         )
 
-    # ---------------------------------------------------------
-    # PHISHING SCAN
-    # ---------------------------------------------------------
-
-    phishing_confidence = None
-
-    if phishing_result:
-
-        phishing_risk = phishing_result.get(
-            "risk_level"
-        )
-
+    if isinstance(phishing_result, dict):
         risks.append(
-            phishing_risk
-        )
-
-        # Preserve confidence for
-        # metadata/reporting purposes.
-        confidence = phishing_result.get(
-            "confidence"
-        )
-
-        if isinstance(
-            confidence,
-            (int, float),
-        ):
-            phishing_confidence = max(
-                0.0,
-                min(
-                    float(confidence),
-                    1.0,
-                ),
+            normalize_risk(
+                phishing_result.get("risk_level")
             )
+        )
 
-    # ---------------------------------------------------------
-    # FINAL RISK
-    # ---------------------------------------------------------
+    return get_highest_risk(*risks)
 
-    return get_highest_risk(
-        *risks
+
+def _get_component_risk(
+    result: dict | None,
+    risk_key: str = "risk_level",
+) -> str:
+    """
+    Safely extract an individual component risk.
+    """
+
+    if not isinstance(result, dict):
+        return "Unknown"
+
+    return normalize_risk(
+        result.get(risk_key)
     )
+
 
 def build_risk_summary(
     web_result: dict | None = None,
@@ -173,8 +175,7 @@ def build_risk_summary(
     vulnerability_result: dict | None = None,
 ) -> dict:
     """
-    Build a structured risk summary
-    for the Master Scan.
+    Build a structured risk summary for Master Scan.
     """
 
     overall_risk = calculate_master_risk(
@@ -184,55 +185,30 @@ def build_risk_summary(
         vulnerability_result=vulnerability_result,
     )
 
-    # ---------------------------------------------------------
-    # Individual Risk Levels
-    # ---------------------------------------------------------
-
-    web_risk = normalize_risk(
-        web_result.get("risk_level")
-        if web_result
-        else None
+    web_risk = _get_component_risk(
+        web_result
     )
 
-    network_risk = normalize_risk(
-        network_result.get("risk_level")
-        if network_result
-        else None
+    network_risk = _get_component_risk(
+        network_result
     )
 
-    vulnerability_risk = normalize_risk(
-        (
-            vulnerability_result.get(
-                "overall_risk"
-            )
-            if vulnerability_result
-            else None
-        )
+    vulnerability_risk = _get_vulnerability_risk(
+        vulnerability_result
     )
 
-    phishing_risk = normalize_risk(
-        phishing_result.get("risk_level")
-        if phishing_result
-        else None
+    phishing_risk = _get_component_risk(
+        phishing_result
     )
-
-    # ---------------------------------------------------------
-    # Phishing Confidence
-    # ---------------------------------------------------------
 
     phishing_confidence = None
 
-    if phishing_result:
-
+    if isinstance(phishing_result, dict):
         confidence = phishing_result.get(
             "confidence"
         )
 
-        if isinstance(
-            confidence,
-            (int, float),
-        ):
-
+        if isinstance(confidence, (int, float)):
             phishing_confidence = round(
                 max(
                     0.0,
@@ -244,78 +220,35 @@ def build_risk_summary(
                 4,
             )
 
-    # ---------------------------------------------------------
-    # Risk Score
-    # ---------------------------------------------------------
-
-    risk_score = RISK_ORDER[
-        overall_risk
-    ]
-
-    # ---------------------------------------------------------
-    # Summary
-    # ---------------------------------------------------------
+    risk_score = RISK_ORDER[overall_risk]
 
     return {
         "overall_risk": overall_risk,
-
         "risk_score": risk_score,
-
         "risk_breakdown": {
             "web": web_risk,
             "network": network_risk,
             "vulnerability": vulnerability_risk,
             "phishing": phishing_risk,
         },
-
-        "phishing_confidence": (
-            phishing_confidence
-        ),
+        "phishing_confidence": phishing_confidence,
     }
+
 
 def orchestrate_risk(
     results: dict,
 ) -> dict:
     """
-    Central risk orchestration for
-    CyberShield AI Master Scan.
+    Central risk orchestration for Master Scan.
     """
 
-    if not isinstance(
-        results,
-        dict,
-    ):
-        return {
-            "overall_risk": "Low",
-            "risk_score": 1,
-            "risk_breakdown": {
-                "web": "Low",
-                "network": "Low",
-                "vulnerability": "Low",
-                "phishing": "Low",
-            },
-            "phishing_confidence": None,
-        }
-
-    web_result = results.get(
-        "web_scan"
-    )
-
-    network_result = results.get(
-        "network_scan"
-    )
-
-    vulnerability_result = results.get(
-        "vulnerability"
-    )
-
-    phishing_result = results.get(
-        "phishing"
-    )
+    if not isinstance(results, dict):
+        return build_risk_summary()
 
     return build_risk_summary(
-        web_result=web_result,
-        network_result=network_result,
-        phishing_result=phishing_result,
-        vulnerability_result=vulnerability_result,
-    )
+        web_result=results.get("web_scan"),
+        network_result=results.get("network_scan"),
+        vulnerability_result=results.get("vulnerability"),
+        phishing_result=results.get("phishing"),
+    
+)

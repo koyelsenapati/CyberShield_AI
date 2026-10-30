@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import {
   CheckCircle2,
   FileCheck2,
@@ -53,7 +53,7 @@ export default function FileIntegrity() {
         <PageHeader
           eyebrow="FILE SECURITY"
           title="File Integrity"
-          description="Calculate and verify SHA-256 file integrity using the CyberShield AI backend."
+          description="Hash files in your monitored server directory and compare each scan with the previous one."
         />
 
         <div className="rounded-xl border border-white/10 bg-[#1F2937]/60 p-6">
@@ -66,7 +66,7 @@ export default function FileIntegrity() {
               </h2>
 
               <p className="mt-1 text-[10px] text-gray-600">
-                The selected path is processed by the backend.
+                Paths are relative to your monitored directory on the server.
               </p>
             </div>
           </div>
@@ -77,7 +77,7 @@ export default function FileIntegrity() {
               onChange={(event) =>
                 setFilePath(event.target.value)
               }
-              placeholder="Enter absolute file path"
+              placeholder="Enter file path (relative to your monitored directory)"
               className="flex-1 rounded-lg border border-white/10 bg-[#0B0F17] px-4 py-3 font-mono text-xs text-white outline-none placeholder:text-gray-700 focus:border-[#00F0FF]/40"
               disabled={loading}
             />
@@ -120,10 +120,26 @@ export default function FileIntegrity() {
                 </h2>
               </div>
 
-              <div className="flex items-center gap-2 rounded-lg border border-[#10B981]/20 bg-[#10B981]/5 px-3 py-2">
-                <CheckCircle2 className="h-4 w-4 text-[#10B981]" />
+              <div
+                className={
+                  scan.status === "Modified"
+                    ? "flex items-center gap-2 rounded-lg border border-[#EF4444]/20 bg-[#EF4444]/5 px-3 py-2"
+                    : "flex items-center gap-2 rounded-lg border border-[#10B981]/20 bg-[#10B981]/5 px-3 py-2"
+                }
+              >
+                {scan.status === "Modified" ? (
+                  <ShieldAlert className="h-4 w-4 text-[#EF4444]" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4 text-[#10B981]" />
+                )}
 
-                <span className="text-[10px] font-semibold text-[#10B981]">
+                <span
+                  className={
+                    scan.status === "Modified"
+                      ? "text-[10px] font-semibold text-[#EF4444]"
+                      : "text-[10px] font-semibold text-[#10B981]"
+                  }
+                >
                   {scan.status}
                 </span>
               </div>

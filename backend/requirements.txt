@@ -4,7 +4,12 @@ sqlalchemy
 alembic
 pydantic
 python-jose
-passlib[bcrypt]
+# passlib 1.7.4 is incompatible with bcrypt >= 4.1 (its backend probe breaks on
+# bcrypt 5.x). Keep these two pinned together.
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+# Required by pydantic's EmailStr (used in the auth schemas).
+email-validator==2.3.0
 python-multipart
 requests
 beautifulsoup4

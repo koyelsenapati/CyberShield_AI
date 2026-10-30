@@ -1,7 +1,8 @@
-﻿from fastapi import HTTPException
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.security import (
+    PasswordTooLongError,
     hash_password,
     verify_password,
 )
@@ -32,15 +33,22 @@ def register(
             detail="Username already taken",
         )
 
+    try:
+        hashed_password = hash_password(request.password)
+    except PasswordTooLongError as exc:
+        # Schemas already reject this; kept as defence in depth.
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        ) from exc
+
     user = create_user(
         db,
         {
             "username": request.username,
             "full_name": request.full_name,
             "email": request.email,
-            "hashed_password": hash_password(
-                request.password
-            ),
+            "hashed_password": hashed_password,
             "role": "user",
             "is_active": True,
             "is_verified": False,

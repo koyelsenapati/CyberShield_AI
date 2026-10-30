@@ -166,3 +166,8 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    # User মডেলের ভেতরে এটি যোগ করুন:
+    incidents = relationship(
+        "Incident", 
+        back_populates="user", 
+        cascade="all, delete-orphan")

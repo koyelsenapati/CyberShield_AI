@@ -13,6 +13,39 @@ COMMON_PASSWORDS = {
     "welcome",
 }
 
+def calculate_entropy(password: str) -> float:
+    if not password:
+        return 0.0
+    
+    # পাসওয়ার্ডের লেন্থ খুব বেশি হলে OverflowError এড়াতে ক্যাপ বা লেন্থ চেক করা
+    # সর্বোচ্চ ২৫৬ ক্যারেক্টার পর্যন্ত হিসাব করবে, এর বেশি হলে সেফ ভ্যালু রিটার্ন করবে
+    if len(password) > 256:
+        password = password[:256]
+
+    # ক্যারেক্টার পুল সাইজ নির্ধারণ
+    pool_size = 0
+    has_lower = any(c.islower() for c in password)
+    has_upper = any(c.isupper() for c in password)
+    has_digit = any(c.isdigit() for c in password)
+    has_symbol = any(not c.isalnum() for c in password)
+
+    if has_lower: pool_size += 26
+    if has_upper: pool_size += 26
+    if has_digit: pool_size += 10
+    if has_symbol: pool_size += 32  # সাধারণ সিম্বলের অনুমান
+
+    if pool_size == 0:
+        return 0.0
+
+    try:
+        # Entropy formula: length * log2(pool_size)
+        entropy = len(password) * math.log2(pool_size)
+        return round(entropy, 2)
+    except (OverflowError, ValueError):
+        # যদি কোনো কারণে ওভারফ্লো করে তবে সর্বোচ্চ একটি সেফ মান রিটার্ন করবে
+        return 999.9
+
+
 def analyze_password(password: str) -> dict:
     if not isinstance(password, str):
         raise ValueError("Password must be a string.")
@@ -23,18 +56,8 @@ def analyze_password(password: str) -> dict:
     digit = bool(re.search(r"\d", password))
     special = bool(re.search(r"[^A-Za-z0-9]", password))
 
-    pool = 0
-
-    if lower:
-        pool += 26
-    if upper:
-        pool += 26
-    if digit:
-        pool += 10
-    if special:
-        pool += 33
-
-    entropy = round(length * math.log2(pool), 2) if pool else 0
+    # নিরাপদ এন্ট্রপি ফাংশন ব্যবহার করা হলো
+    entropy = calculate_entropy(password)
     common = password.lower() in COMMON_PASSWORDS
 
     score = 0
@@ -78,7 +101,18 @@ def analyze_password(password: str) -> dict:
     if common:
         suggestions.append("Avoid common passwords.")
 
-    brute_force_seconds = (2 ** entropy) / 1_000_000_000 if entropy else 0
+    # Safe Brute Force Calculation (Prevents OverflowError & JSON serialization crash)
+    if entropy:
+        if entropy > 1000:
+            # খুব বড় এন্ট্রপির ক্ষেত্রে JSON-compliant সর্বোচ্চ নিরাপদ ফ্লোট মান ব্যবহার করা
+            brute_force_seconds = float("1e308")
+        else:
+            try:
+                brute_force_seconds = (2 ** entropy) / 1_000_000_000
+            except OverflowError:
+                brute_force_seconds = float("1e308")
+    else:
+        brute_force_seconds = 0
 
     return {
         "score": score,

@@ -1,8 +1,9 @@
-﻿import uuid
+import uuid
 
 from fastapi.testclient import TestClient
 
 from app.api.dependencies import get_current_user
+from app.core.config import settings
 from app.core.jwt import verify_access_token
 from app.database.database import SessionLocal
 from app.main import app
@@ -53,18 +54,25 @@ def test_alerts_are_scoped_to_the_authenticated_user():
     assert created.json()["id"] in {alert["id"] for alert in first_alerts.json()}
     assert created.json()["id"] not in {alert["id"] for alert in second_alerts.json()}
 
-def test_file_integrity_scan_is_owned_by_the_requesting_user(tmp_path):
+def test_file_integrity_scan_is_owned_by_the_requesting_user(tmp_path, monkeypatch):
+    # The endpoint now only reads <FILE_INTEGRITY_BASE_DIR>/<user id>/..., so the
+    # old absolute-path form of this test (which hashed an arbitrary server
+    # path) is no longer valid and is replaced, not deleted.
+    base = tmp_path / "fim_root"
+    monkeypatch.setattr(settings, "FILE_INTEGRITY_BASE_DIR", str(base))
     headers = _new_user_headers()
-    target = tmp_path / "integrity-target.txt"
+    user_id = _user_id(headers)
+    target = base / str(user_id) / "integrity-target.txt"
+    target.parent.mkdir(parents=True)
     target.write_text("integrity test", encoding="utf-8")
 
     response = client.post(
         "/file-integrity/",
-        params={"file_path": str(target)},
+        params={"file_path": "integrity-target.txt"},
         headers=headers,
     )
     assert response.status_code == 200, response.text
-    assert response.json()["scan"]["user_id"] == _user_id(headers)
+    assert response.json()["scan"]["user_id"] == user_id
 
 def test_reports_require_ownership(tmp_path):
     owner_headers = _new_user_headers()

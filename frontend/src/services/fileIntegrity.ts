@@ -1,41 +1,36 @@
-﻿import type {
+import axios from "axios";
+import { api } from "./api";
+import type {
   FileIntegrityResponse,
 } from "../types/fileIntegrity";
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "/api/v1";
-
+/**
+ * Hash a file inside the signed-in user's monitored directory on the server.
+ * `filePath` is relative to that directory. Uses the shared axios client, so
+ * the Authorization header and 401 -> logout handling come from api.ts.
+ */
 export async function scanFileIntegrity(
   filePath: string,
 ): Promise<FileIntegrityResponse> {
-  const token = localStorage.getItem("token");
-
-  const params = new URLSearchParams({
-    file_path: filePath,
-  });
-
-  const response = await fetch(
-    `${API_BASE_URL}/file-integrity/?${params.toString()}`,
-    {
-      method: "POST",
-      headers: {
-        ...(token
-          ? {
-              Authorization: `Bearer ${token}`,
-            }
-          : {}),
-      },
-    },
-  );
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(
-      data?.detail ||
-        "File integrity scan failed.",
+  try {
+    const response = await api.post<FileIntegrityResponse>(
+      "/file-integrity/",
+      null,
+      { params: { file_path: filePath } },
     );
-  }
 
-  return data;
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const detail = error.response?.data?.detail;
+
+      throw new Error(
+        typeof detail === "string"
+          ? detail
+          : "File integrity scan failed.",
+      );
+    }
+
+    throw error;
+  }
 }
