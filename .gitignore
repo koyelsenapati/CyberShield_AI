@@ -1,0 +1,29 @@
+# Python
+backend/.venv/
+backend/**/__pycache__/
+backend/**/*.pyc
+__pycache__/
+*.pyc
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Secrets
+.env
+*.env
+!.env.example
+backend/.env
+frontend/.env
+
+# Test/generated files
+frontend/test-results/
+playwright-report/
+coverage/
+.pytest_cache/
+
+# Generated/local files
+*.log
+
+# Large/local image collection that caused Git filename error
+images/
